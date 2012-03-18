@@ -1,8 +1,7 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=dice
+TARG=probability
 GOFILES=\
-	dice.go
-DEPS=../probability
+	choose.go
 
 include $(GOROOT)/src/Make.pkg
