@@ -3,6 +3,8 @@ package main
 import (
   "dice"
   "fmt"
+  "math"
+  "time"
 )
 
 
@@ -24,16 +26,16 @@ func printAllRolls() {
   }
 }
 
-func dieRolls_firstTry(sides, rolls, dieSum int) float64 {
+func dieRolls_firstTry(sides, rolls, dieSum int) int64 {
   if rolls == 1 {
     if dieSum >= 1 && dieSum <= sides {
-      return 1.0 / float64(sides)
+      return 1.0
     } else {
       return 0
     }
   }
 
-  sum := 0.0
+  sum := int64(0)
 
   for i := 1; i <= dieSum - rolls + 1; i++ {
     sum += dieRolls_firstTry(sides, 1, i) *
@@ -42,13 +44,54 @@ func dieRolls_firstTry(sides, rolls, dieSum int) float64 {
   return sum
 }
 
+func dieRolls_secondTryWithCache(sides, rolls, dieSum int,
+    cache map[string] int64) int64 {
+  cacheKey := fmt.Sprintf("%dd%d:%d", rolls, sides, dieSum)
+  value, ok := cache[cacheKey]
+  if ok {
+    return value
+  }
+
+  if rolls == 1 {
+    if dieSum >= 1 && dieSum <= sides {
+      return 1
+    } else {
+      return 0
+    }
+  }
+
+  sum := int64(0)
+
+  for i := 1; i <= dieSum - rolls + 1; i++ {
+    sum += dieRolls_secondTryWithCache(sides, 1, i, cache) *
+        dieRolls_secondTryWithCache(sides, rolls - 1, dieSum - i, cache)
+  }
+  cache[cacheKey] = sum
+  return sum
+}
+
 func printRolls_firstTry(sides, rolls int) {
   fmt.Printf("%dd%d rolls: \n", rolls, sides)
 
   maxValue := rolls * sides
+  rollSequenceCount := math.Pow(float64(sides), float64(rolls))
   for value := rolls; value <= maxValue; value++ {
-    fmt.Printf("  %2d  %8.5f%%\n", value,
-       dieRolls_firstTry(sides, rolls, value) * 100)
+    valueRolls := float64(dieRolls_firstTry(sides, rolls, value))
+    fmt.Printf(" %3d  %8.5f%%\n", value,
+       valueRolls / rollSequenceCount * 100)
+  }
+}
+
+func printRolls_secondTry(sides, rolls int) {
+  fmt.Printf("%dd%d rolls: \n", rolls, sides)
+
+  maxValue := rolls * sides
+  rollSequenceCount := math.Pow(float64(sides), float64(rolls))
+  cache := make(map[string]int64)
+  for value := rolls; value <= maxValue; value++ {
+    valueRolls := float64(dieRolls_secondTryWithCache(sides, rolls, value, cache))
+    fmt.Printf(" %3d  %8.5f%%\n", value,
+       valueRolls / rollSequenceCount * 100)
   }
 }
 
@@ -57,11 +100,22 @@ func printDiceRolls(sides, rolls int) {
 }
 
 func compareRollMethods(sides, rolls int) {
+  start1 := time.Nanoseconds()
   printDiceRolls(sides, rolls)
-  printRolls_firstTry(sides, rolls)
+  start2 := time.Nanoseconds()
+  printRolls_secondTry(sides, rolls)
+  end := time.Nanoseconds()
+
+  binomialMillis := (start2 - start1) / 1000000
+  cachedMillis := (end - start2) / 1000000
+  fmt.Printf("Binomial took %d millis\n", binomialMillis)
+  fmt.Printf("Cached Recursive took %d millis\n", cachedMillis)
+  fmt.Printf("Binomial was %5.2f times faster\n", float64(cachedMillis) / float64(binomialMillis)) 
+  
+  //printRolls_firstTry(sides, rolls)
 }
 
 func main() {
-  compareRollMethods(6, 3)
+  compareRollMethods(12, 15)
 }
 
