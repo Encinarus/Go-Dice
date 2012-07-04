@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dice"
 	"fmt"
+	"github.com/Encinarus/Go-Dice/dice"
 	"math"
 	"time"
 )
